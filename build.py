@@ -51,6 +51,10 @@ PLAUSIBLE_M2 = range(100, 100_001)
 MIN_SURFACE = 9
 
 DVF_URL = "https://files.data.gouv.fr/geo-dvf/latest/csv/{year}/departements/{dep}.csv.gz"
+# Ce que la dernière construction des ventes a lu de DVF ; à côté des fichiers publiés, que l'application ne lit pas.
+DVF_STATE = "etat-dvf.json"
+# DVF se met à jour deux fois par an : au-delà, on reconstruit même si rien ne semble avoir changé.
+DVF_MAX_AGE_DAYS = 200
 INSEE_URL = "https://bdm.insee.fr/series/sdmx/data/SERIES_BDM/{series}?lastNObservations=1"
 INSEE_SINCE_URL = "https://bdm.insee.fr/series/sdmx/data/SERIES_BDM/{series}?startPeriod={since}"
 # L'année des prix livrés dans l'application (ReferenceData.PRICES_YEAR) : les indices du flux s'expriment par rapport
@@ -217,6 +221,39 @@ def read_dvf(dep, year, dvf_dir):
         raise
 
 
+def dvf_stamp(today):
+    """La date de mise à jour de DVF (en-tête Last-Modified d'un fichier de l'année la plus récente), ou None."""
+    for year in (today.year, today.year - 1):
+        request = urllib.request.Request(DVF_URL.format(year=year, dep="33"), method="HEAD",
+                                         headers={"User-Agent": "gousset-flux"})
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                modified = response.headers.get("Last-Modified")
+                if modified:
+                    return f"{year} {modified}"
+        except (urllib.error.URLError, OSError):
+            continue
+    return None
+
+
+def homes_needed(out, stamp, today):
+    """Vrai s'il faut retélécharger DVF : jamais construit, DVF mis à jour depuis, ou construction trop ancienne."""
+    path = out / DVF_STATE
+    if not path.exists():
+        log("logements : première construction")
+        return True
+    state = json.loads(path.read_text())
+    age = (today - dt.date.fromisoformat(state["built"])).days
+    if stamp is not None and stamp != state.get("stamp"):
+        log(f"logements : DVF mis à jour ({stamp})")
+        return True
+    if age > DVF_MAX_AGE_DAYS:
+        log(f"logements : construits il y a {age} jours, on refait")
+        return True
+    log(f"logements : DVF inchangé depuis la construction du {state['built']}, rien à retélécharger")
+    return False
+
+
 def sales_of(text):
     """
     Les ventes d'un logement seul : une mutation « Vente » qui ne porte qu'un local Maison ou Appartement (des
@@ -339,7 +376,8 @@ def main():
     parser.add_argument("--dvf-dir", help="fichiers DVF locaux <année>/<dép>.csv, pour les essais")
     parser.add_argument("--only", help="liste de fichiers, par exemple taux,credit,logement-33")
     parser.add_argument("--today", help="date de construction AAAA-MM-JJ, pour les essais")
-    parser.add_argument("--skip-homes", action="store_true", help="sans les ventes DVF (publiées deux fois par an)")
+    parser.add_argument("--skip-homes", action="store_true", help="sans les ventes DVF")
+    parser.add_argument("--force-homes", action="store_true", help="retélécharger DVF même s'il n'a pas changé")
     args = parser.parse_args()
 
     today = dt.date.fromisoformat(args.today) if args.today else dt.date.today()
@@ -368,10 +406,18 @@ def main():
             write(out, "taux", build_rates(previous(out, "taux")), keys, today)
         if wanted("credit"):
             write(out, "credit", build_mortgage(), keys, today)
+        # Les ventes ne se retéléchargent que si DVF a changé (ou à la demande) ; les essais locaux les refont toujours.
+        homes = not args.skip_homes and any(wanted(f"logement-{dep}") for dep in DEPARTMENTS)
+        stamp = None
+        if homes and not args.dvf_dir and not args.force_homes:
+            stamp = dvf_stamp(today)
+            homes = homes_needed(out, stamp, today)
+        elif homes and args.force_homes:
+            stamp = dvf_stamp(today)
         failures = []
         for dep in DEPARTMENTS:
             name = f"logement-{dep}"
-            if args.skip_homes or not wanted(name):
+            if not homes or not wanted(name):
                 continue
             try:
                 built = build_homes(dep, args.dvf_dir, today)
@@ -393,6 +439,10 @@ def main():
             write(out, name, data, keys, today)
         if failures and len(failures) > len(DEPARTMENTS) // 2:
             raise SystemExit(f"DVF injoignable pour {len(failures)} départements")
+        # Retenir ce qui a été lu, seulement après une construction complète et sans échec.
+        if homes and not args.dvf_dir and only is None and not failures:
+            state = {"stamp": stamp, "built": today.isoformat()}
+            (out / DVF_STATE).write_text(json.dumps(state, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

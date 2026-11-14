@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       logements:
-        description: "Reconstruire aussi les ventes DVF (sinon : le premier lundi du mois seulement)"
+        description: "Retélécharger les ventes DVF même si elles n'ont pas changé"
         type: boolean
         default: false
 
@@ -44,11 +44,12 @@ jobs:
           FLUX_SIGNING_KEY: ${{ secrets.FLUX_SIGNING_KEY }}
           WEBSTAT_API_KEY: ${{ secrets.WEBSTAT_API_KEY }}
         run: |
-          # Les ventes DVF changent deux fois par an : le premier lundi du mois suffit.
-          if [ "${{ inputs.logements }}" = "true" ] || [ "$(date +%d)" -le 7 ]; then
-            python3 build.py --out public
+          # Les ventes DVF ne se retéléchargent que si DVF a été mis à jour depuis la dernière construction
+          # (build.py le vérifie d'une requête légère) ; la case « logements » force le retéléchargement.
+          if [ "${{ inputs.logements }}" = "true" ]; then
+            python3 build.py --out public --force-homes
           else
-            python3 build.py --out public --skip-homes
+            python3 build.py --out public
           fi
 
       - name: Publier

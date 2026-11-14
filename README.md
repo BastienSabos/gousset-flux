@@ -13,8 +13,9 @@ https://bastiensabos.github.io/gousset-flux/v1/.
 Chaque fichier est signé (ECDSA P-256) par la clé du secret `FLUX_SIGNING_KEY` ; l'application refuse tout fichier
 non signé, plus ancien, ou d'un autre département. `flux.pub` est la clé publique que l'application contient (`FeedKey.kt`) : la tâche refuse de publier si le secret ne lui correspond pas.
 
-- **Chaque lundi** : `.github/workflows/publier.yml` reconstruit les taux ; les ventes DVF le premier lundi du mois
-  (ou à la demande, case « logements »).
+- **Chaque lundi** : `.github/workflows/publier.yml` reconstruit les taux. Les ventes DVF ne se retéléchargent que si
+  DVF a été mis à jour depuis la dernière construction (date notée dans `etat-dvf.json` sur gh-pages), ou si elle a plus
+  de 200 jours ; la case « logements » force le retéléchargement.
 - **À la main** : `sources/livrets.json` le 1er février et le 1er août ; `sources/manuel.json` (crédit) chaque mois,
   après la publication « Crédits aux particuliers » de la Banque de France.
 - **En local** : `python3 build.py --out public --key flux.pem` (Python 3.10+ et openssl).
