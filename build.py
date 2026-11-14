@@ -360,6 +360,9 @@ def main():
         subprocess.run(["openssl", "ec", "-in", key_path, "-pubout", "-out", public_path], check=True,
                        capture_output=True)
         keys = (key_path, public_path)
+        # La clé du secret doit être celle de l'application (flux.pub = FEED_PUBLIC_KEY) : sinon tout serait refusé.
+        if not args.key and Path(public_path).read_text().split() != (ROOT / "flux.pub").read_text().split():
+            raise SystemExit("le secret FLUX_SIGNING_KEY ne correspond pas à flux.pub, la clé de l'application")
 
         if wanted("taux"):
             write(out, "taux", build_rates(previous(out, "taux")), keys, today)

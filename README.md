@@ -11,7 +11,7 @@ https://bastiensabos.github.io/gousset-flux/v1/.
 | `logement-<dép>.json` | Prix au m² des 200 ventes les plus récentes par commune et par type, sur 3 ans | DVF géolocalisées (data.gouv.fr), Licence ouverte |
 
 Chaque fichier est signé (ECDSA P-256) par la clé du secret `FLUX_SIGNING_KEY` ; l'application refuse tout fichier
-non signé, plus ancien, ou d'un autre département.
+non signé, plus ancien, ou d'un autre département. `flux.pub` est la clé publique que l'application contient (`FeedKey.kt`) : la tâche refuse de publier si le secret ne lui correspond pas.
 
 - **Chaque lundi** : `.github/workflows/publier.yml` reconstruit les taux ; les ventes DVF le premier lundi du mois
   (ou à la demande, case « logements »).
