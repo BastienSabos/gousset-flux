@@ -1,0 +1,65 @@
+# Construit, signe et publie le flux Gousset chaque lundi (AND-NET-04, ADR 0037).
+# Les fichiers vont sur la branche gh-pages, que GitHub Pages sert sous https://bastiensabos.github.io/gousset-flux/.
+name: Publier le flux
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"   # le lundi vers 6 h (heure de Paris)
+  workflow_dispatch:
+    inputs:
+      logements:
+        description: "Reconstruire aussi les ventes DVF (sinon : le premier lundi du mois seulement)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # pousser sur gh-pages ; rien d'autre
+
+concurrency:
+  group: publier
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Récupérer ce qui est déjà publié
+        run: |
+          if git ls-remote --exit-code origin gh-pages >/dev/null; then
+            git fetch --depth=1 origin gh-pages
+            git worktree add public origin/gh-pages
+          else
+            git worktree add --orphan -b gh-pages public
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Construire et signer
+        env:
+          FLUX_SIGNING_KEY: ${{ secrets.FLUX_SIGNING_KEY }}
+          WEBSTAT_API_KEY: ${{ secrets.WEBSTAT_API_KEY }}
+        run: |
+          # Les ventes DVF changent deux fois par an : le premier lundi du mois suffit.
+          if [ "${{ inputs.logements }}" = "true" ] || [ "$(date +%d)" -le 7 ]; then
+            python3 build.py --out public
+          else
+            python3 build.py --out public --skip-homes
+          fi
+
+      - name: Publier
+        run: |
+          cd public
+          touch .nojekyll
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Rien de neuf à publier."
+            exit 0
+          fi
+          git -c user.name="gousset-flux" -c user.email="actions@users.noreply.github.com" \
+            commit -qm "Flux du $(date +%F)"
+          git push origin HEAD:gh-pages

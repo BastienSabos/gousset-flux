@@ -1,0 +1,18 @@
+{
+  "_lisez_moi": "Identifiants des séries lues automatiquement. inflation_insee : IPC base 2025, glissement annuel, France, ensemble (https://www.insee.fr/fr/statistiques/serie/011814632). credit_webstat : lu seulement si le secret WEBSTAT_API_KEY existe ; vide, credit vient de manuel.json. prix_insee : pour chaque poste de « Se situer », l'identifiant BDM de l'indice mensuel des prix (IPC, France, toute base) qui lui répond ; un poste vide garde les prix de l'application. Les postes sans série propre (loisirs, enseignement, restauration, autres) peuvent prendre celle des services.",
+  "inflation_insee": "011814632",
+  "credit_webstat": "",
+  "prix_insee": {
+    "ALIMENTATION": "",
+    "HABILLEMENT": "",
+    "LOGEMENT": "",
+    "EQUIPEMENT": "",
+    "SANTE": "",
+    "TRANSPORTS": "",
+    "COMMUNICATIONS": "",
+    "LOISIRS": "",
+    "ENSEIGNEMENT": "",
+    "RESTAURATION": "",
+    "AUTRES": ""
+  }
+}

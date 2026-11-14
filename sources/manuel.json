@@ -1,0 +1,5 @@
+{
+  "_lisez_moi": "Valeurs saisies à la main, quand la source automatique manque. credit : taux moyen des nouveaux crédits à l'habitat aux particuliers, hors renégociations (Banque de France, « Crédits aux particuliers », publié chaque mois). inflation : glissement annuel de l'IPC (Insee), utilisé seulement si l'Insee ne répond pas.",
+  "credit": { "pourcent": "3,32", "mois": "2026-09" },
+  "inflation": { "pourcent": "0,9", "mois": "2026-10" }
+}
