@@ -417,7 +417,9 @@ def main():
         failures = []
         for dep in DEPARTMENTS:
             name = f"logement-{dep}"
-            if not homes or not wanted(name):
+            # DVF inchangé : seuls les départements encore jamais publiés (échec la dernière fois) se retentent.
+            missing = not (out / "v1" / f"{name}.json").exists() and not args.skip_homes
+            if not wanted(name) or not (homes or missing):
                 continue
             try:
                 built = build_homes(dep, args.dvf_dir, today)
@@ -439,8 +441,8 @@ def main():
             write(out, name, data, keys, today)
         if failures and len(failures) > len(DEPARTMENTS) // 2:
             raise SystemExit(f"DVF injoignable pour {len(failures)} départements")
-        # Retenir ce qui a été lu, seulement après une construction complète et sans échec.
-        if homes and not args.dvf_dir and only is None and not failures:
+        # Retenir ce qui a été lu ; un département en échec n'a pas de fichier et se retentera seul la fois suivante.
+        if homes and not args.dvf_dir and only is None:
             state = {"stamp": stamp, "built": today.isoformat()}
             (out / DVF_STATE).write_text(json.dumps(state, ensure_ascii=False) + "\n", encoding="utf-8")
 
