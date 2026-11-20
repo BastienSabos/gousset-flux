@@ -1,0 +1,7 @@
+# Propose chaque mois les nouvelles versions des actions du workflow, avec leur empreinte (elles sont épinglées par SHA).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
