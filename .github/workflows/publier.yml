@@ -25,8 +25,14 @@ jobs:
   publier:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    # Le lancement à la main depuis une autre branche ne doit pas lire la clé de signature : l'environnement « flux »
+    # (Réglages › Environments) porte les secrets et n'accepte que main ; le test de branche double cette règle.
+    if: github.ref == 'refs/heads/main'
+    environment: flux
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false   # le code de construction ne voit pas le jeton d'écriture ; seule l'étape « Publier » l'utilise
 
       - name: Récupérer ce qui est déjà publié
         run: |
@@ -55,6 +61,8 @@ jobs:
           fi
 
       - name: Publier
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           cd public
           touch .nojekyll
@@ -65,4 +73,4 @@ jobs:
           fi
           git -c user.name="gousset-flux" -c user.email="actions@users.noreply.github.com" \
             commit -qm "Flux du $(date +%F)"
-          git push origin HEAD:gh-pages
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:gh-pages

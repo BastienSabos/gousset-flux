@@ -221,6 +221,9 @@ def read_dvf(dep, year, dvf_dir):
         raise
 
 
+# Au-delà, le flux serait refusé par l'application (Feed.kt) et bloquerait les suivants (W86).
+MAX_FUTURE_DAYS = 2
+
 def dvf_stamp(today):
     """La date de mise à jour de DVF (en-tête Last-Modified d'un fichier de l'année la plus récente), ou None."""
     for year in (today.year, today.year - 1):
@@ -381,6 +384,9 @@ def main():
     args = parser.parse_args()
 
     today = dt.date.fromisoformat(args.today) if args.today else dt.date.today()
+    if (today - dt.date.today()).days > MAX_FUTURE_DAYS:
+        # Un flux daté du futur rendrait tous les suivants « plus anciens » pour l'application, sans retour possible.
+        parser.error(f"--today ({today}) est à plus de {MAX_FUTURE_DAYS} jours dans le futur : flux refusé")
     out = Path(args.out)
     only = set(args.only.split(",")) if args.only else None
     wanted = lambda name: only is None or name in only  # noqa: E731
